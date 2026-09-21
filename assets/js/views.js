@@ -379,12 +379,13 @@ window.Views = (function () {
     if (q) rows = rows.filter((c) => (c.company_name + c.contact_person + (c.email || "")).toLowerCase().includes(q));
     return head("Customers", `${rows.length} companies · ${u.money(rows.reduce((a, c) => a + (+c.lifetime_value || 0), 0))} lifetime value`, `<button class="btn-a" data-action="new-client">+ New customer</button>`) + `
     <div class="card p-3 mb-4 flex gap-2"><input id="cq" class="inp" placeholder="Search company, contact, email…" value="${u.esc(window._filter?.customers || "")}"/></div>
-    <div class="card overflow-hidden"><div class="overflow-x-auto"><table class="tbl w-full min-w-[860px]"><thead><tr><th>Company</th><th>Contact</th><th>Status</th><th>Industry</th><th>Lifetime</th><th>Manager</th></tr></thead><tbody>
+    <div class="card overflow-hidden"><div class="overflow-x-auto"><table class="tbl w-full min-w-[900px]"><thead><tr><th>Company</th><th>Contact</th><th>Status</th><th>Industry</th><th>Lifetime</th><th>Manager</th><th></th></tr></thead><tbody>
     ${rows.map((c) => { const projs = s.list("projects").filter((p) => p.client_id === c.id); return `<tr class="cursor-pointer" data-go="#/customer/${c.id}">
       <td><div class="font-semibold">${u.esc(c.company_name)}</div><div class="text-[.68rem] text-zinc-400">${projs.length} projects</div></td>
       <td><div class="text-[.8rem]">${u.esc(c.contact_person || "—")}</div><div class="text-[.68rem] text-zinc-400">${u.esc(c.email || "")}</div></td>
       <td>${u.pill(c.status)}</td><td class="text-zinc-500 text-[.78rem]">${u.esc(c.industry || "—")}</td>
-      <td class="font-num font-bold">${u.money(c.lifetime_value)}</td><td><span class="flex items-center gap-2">${u.avatar(c.account_manager, 22)}<span class="text-[.76rem]">${u.esc(c.account_manager || "—")}</span></span></td></tr>`; }).join("")}
+      <td class="font-num font-bold">${u.money(c.lifetime_value)}</td><td><span class="flex items-center gap-2">${u.avatar(c.account_manager, 22)}<span class="text-[.76rem]">${u.esc(c.account_manager || "—")}</span></span></td>
+      <td><button class="btn-g !px-2.5 !py-1" data-chat-client="${c.id}">Chat</button></td></tr>`; }).join("")}
     </tbody></table></div></div>`;
   }
 
@@ -414,7 +415,7 @@ window.Views = (function () {
     <div class="card p-5 mt-2 mb-4"><div class="flex flex-wrap items-center gap-4"><div class="w-12 h-12 rounded-xl bg-[#111113] text-white flex items-center justify-center font-extrabold">${u.initials(c.company_name)}</div>
     <div class="flex-1"><div class="flex items-center gap-2">${u.pill(c.status)}<span class="text-[.72rem] text-zinc-400">${(c.tags || []).map((t) => "#" + t).join(" ")}</span></div>
     <h1 class="text-[1.35rem] font-extrabold tracking-tight">${u.esc(c.company_name)}</h1><p class="text-[.8rem] text-zinc-500">${u.esc(c.contact_person || "")} · ${u.esc(c.email || "")} · ${u.esc(c.phone || "")}</p></div>
-    <div class="flex gap-2"><button class="btn-g" data-edit-client="${c.id}">Edit</button><button class="btn-p" data-action="new-project">+ Project</button></div></div></div>
+    <div class="flex gap-2"><button class="btn-g" data-chat-client="${c.id}">Chat</button><button class="btn-g" data-edit-client="${c.id}">Edit</button><button class="btn-p" data-action="new-project">+ Project</button></div></div></div>
     <div class="flex overflow-x-auto border-b border-[#E8E8E6] mb-4">${tabs.map((t) => `<button class="tabbtn ${tab === t ? "active" : ""}" data-ctab="${t}">${t}</button>`).join("")}</div>${body}`;
   }
 

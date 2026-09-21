@@ -14,6 +14,7 @@
 - Fix yang dilakukan saat deploy: hapus field lawas `"public": true` dari `vercel.json` (gagal validasi skema), matikan Vercel Authentication (`ssoProtection: null` via API) agar publik bisa akses.
 - Catatan: branch `master` masih ada di remote (default branch GitHub masih `master` — perlu owner yang ganti ke `main` di Settings, lalu hapus `master`).
 - Tim: 1 orang (Sissy, Account Manager) — `config.js:team` + `currentUser`, default owner/assignee form, signer dokumen print, dan profil sidebar semua Sissy.
+- Chat WA customer: tombol Chat di tabel Customers + header detail → modal brief (nomor auto format 62, template penawaran dinamis dari services + project client) → `wa.me` tab baru. Tanpa nomor → toast + buka form edit.
 
 ## Keputusan Arsitektur
 

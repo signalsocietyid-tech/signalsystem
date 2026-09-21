@@ -201,6 +201,39 @@
       else S().insert("clients", { ...v, tags: [], lifetime_value: 0 });
     });
   }
+  function chatClient(id) {
+    const c = S().get("clients", id); if (!c) return;
+    if (!waNumber(c.phone)) { U().toast("Add a phone number first"); newClient(c); return; }
+    U().openModal({
+      title: "Chat via WhatsApp", sub: `${c.company_name} · brief siap kirim, bisa diedit dulu`,
+      body: `<div class="grid grid-cols-1 gap-3">${F("To (WhatsApp number)", T("wa_to", c.phone), 1)}${F("Message", `<textarea name="wa_msg" class="inp" rows="6">${esc(waBrief(c))}</textarea>`, 1)}</div>`,
+      actions: [{ label: "Cancel", ghost: true, onClick: () => U().closeModal() },
+        { label: "Open WhatsApp", primary: true, id: "m-wa", onClick: () => {
+          const vals = {}; document.querySelectorAll("#modal-body [name]").forEach((el) => (vals[el.name] = el.value));
+          const num = waNumber(vals.wa_to);
+          if (!num) return U().toast("Add a phone number first");
+          if ((vals.wa_to || "") !== (c.phone || "")) S().update("clients", c.id, { phone: vals.wa_to });
+          U().closeModal();
+          window.open("https://wa.me/" + num + "?text=" + encodeURIComponent(vals.wa_msg || ""), "_blank");
+        } }],
+    });
+  }
+  function waNumber(raw) {
+    const d = String(raw || "").replace(/\D/g, "");
+    if (!d) return "";
+    if (d.startsWith("0")) return "62" + d.slice(1);
+    return d;
+  }
+  function waBrief(c) {
+    const svcName = (k) => (C().serviceKeys.find((x) => x.key === k) || {}).name || k;
+    const mine = [...new Set(S().list("projects").filter((p) => p.client_id === c.id && p.service_key).map((p) => svcName(p.service_key)))];
+    const act = S().list("services").filter((x) => x.is_active !== false && x.name).map((x) => x.name);
+    const offer = (act.length ? act : C().serviceKeys.map((x) => x.name)).join(", ");
+    const first = mine.length
+      ? `Terima kasih sudah memakai layanan ${mine.join(", ")} bersama kami.`
+      : `Kami membantu bisnis seperti ${c.company_name} bertumbuh lewat layanan digital.`;
+    return `Halo ${c.contact_person || "Bapak/Ibu"} dari ${c.company_name}, saya Sissy dari Signal Society.\n\n${first}\nKami juga menyediakan: ${offer}.\n\nBoleh saya kirimkan penawaran singkat untuk ${c.company_name}?`;
+  }
   function newLead() {
     formModal("New lead", `
       ${F("Company *", T("company", ""), 1)} ${F("Contact", T("contact_person", ""))} ${F("Email", T("email", ""))}
@@ -904,6 +937,7 @@
     document.querySelectorAll("[data-edit-project]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); const p = S().get("projects", b.dataset.editProject);
       formModal("Edit project", `${F("Name", T("name", p.name), 1)}${F("Status", Sel("status", opt(C().projectStatuses, p.status)))}${F("Deadline", Dd("deadline", p.deadline))}${F("Budget", `<input name="budget" type="number" class="inp font-num" value="${p.budget}"/>`)}`, (v) => S().update("projects", p.id, { ...v, budget: +v.budget || 0 })); }));
     document.querySelectorAll("[data-edit-client]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); newClient(S().get("clients", b.dataset.editClient)); }));
+    document.querySelectorAll("[data-chat-client]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); chatClient(b.dataset.chatClient); }));
     document.querySelectorAll("[data-edit-campaign]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); newCampaign(S().get("campaigns", b.dataset.editCampaign)); }));
     document.querySelectorAll("[data-convert]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); convertLead(b.dataset.convert); }));
     document.querySelectorAll("[data-markpaid]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); receivePaymentForm(b.dataset.markpaid); }));
