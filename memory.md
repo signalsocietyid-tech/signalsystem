@@ -6,6 +6,14 @@
 
 **Fase 1 — frontend selesai & terverifikasi.** 25 view render PASS, CRUD Store teruji, serve HTTP 200. Data persisten di `localStorage` (key `signal_system_v1`, tombol reset di Settings → Danger zone).
 
+## Deploy (21 Sep 2026 — LIVE)
+
+- Repo: `signalsocietyid-tech/signalsystem`, branch utama **`main`** (di-rename dari `master` agar cocok dengan productionBranch Vercel).
+- Production: `https://signalsystem-signalsocietyid-tech.vercel.app/` — HTTP 200, judul "Signal System · Signal Society".
+- Project Vercel: `signalsystem` (akun `signalsocietyid-tech`, Hobby). Auto-deploy dari push ke `main`.
+- Fix yang dilakukan saat deploy: hapus field lawas `"public": true` dari `vercel.json` (gagal validasi skema), matikan Vercel Authentication (`ssoProtection: null` via API) agar publik bisa akses.
+- Catatan: branch `master` masih ada di remote (default branch GitHub masih `master` — perlu owner yang ganti ke `main` di Settings, lalu hapus `master`).
+
 ## Keputusan Arsitektur
 
 | # | Keputusan | Alasan |
