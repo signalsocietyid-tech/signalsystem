@@ -1,0 +1,88 @@
+/* Signal System · global styles (Tailwind v4 browser + custom layer) */
+:root{
+  --signal:#FF6600; --signal-hover:#E65C00; --signal-soft:#FFF1E8;
+  --ink:#111113; --graphite:#3A3A3E; --muted:#71717A;
+  --line:#E8E8E6; --paper:#FAFAF9; --card:#FFFFFF;
+}
+html{-webkit-font-smoothing:antialiased}
+body{font-family:'Inter',ui-sans-serif,system-ui,sans-serif;background:var(--paper);color:var(--ink)}
+::selection{background:#FF6600;color:#fff}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-thumb{background:#D8D8D5;border-radius:99px;border:2px solid #FAFAF9}
+*::-webkit-scrollbar-track{background:transparent}
+
+.font-num{font-variant-numeric:tabular-nums}
+.navlink{display:flex;align-items:center;gap:.65rem;padding:.42rem .65rem;border-radius:.55rem;font-size:.83rem;color:#52525B;font-weight:500;transition:all .15s;white-space:nowrap}
+.navlink:hover{background:#F1F1EF;color:#111113}
+.navlink.active{background:var(--ink);color:#fff}
+.navlink.active .navdot{background:var(--signal)}
+.navdot{width:6px;height:6px;border-radius:99px;background:#D4D4D2;flex-shrink:0}
+.navlink.active svg{stroke:#fff}
+.kpi-label{font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8E8E93}
+.chip{display:inline-flex;align-items:center;gap:.3rem;font-size:.7rem;font-weight:600;padding:.18rem .55rem;border-radius:99px;border:1px solid var(--line);background:#fff}
+.dot{width:7px;height:7px;border-radius:99px;display:inline-block}
+.tbl th{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:#8E8E93;font-weight:600;text-align:left;padding:.55rem .75rem;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{font-size:.82rem;padding:.62rem .75rem;border-bottom:1px solid #F1F1EF;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr{transition:background .12s}
+.tbl tbody tr:hover{background:#FAFAF8}
+.btn-p{display:inline-flex;align-items:center;gap:.45rem;background:var(--ink);color:#fff;font-size:.8rem;font-weight:600;padding:.5rem .9rem;border-radius:.6rem;transition:all .15s}
+.btn-p:hover{background:#000;transform:translateY(-1px)}
+.btn-a{display:inline-flex;align-items:center;gap:.45rem;background:var(--signal);color:#fff;font-size:.8rem;font-weight:600;padding:.5rem .9rem;border-radius:.6rem;transition:all .15s}
+.btn-a:hover{background:var(--signal-hover);transform:translateY(-1px)}
+.btn-g{display:inline-flex;align-items:center;gap:.45rem;background:#fff;border:1px solid var(--line);color:#27272A;font-size:.8rem;font-weight:600;padding:.5rem .9rem;border-radius:.6rem;transition:all .15s}
+.btn-g:hover{border-color:#111113}
+.inp{width:100%;font-size:.83rem;border:1px solid var(--line);border-radius:.6rem;padding:.52rem .75rem;background:#fff;outline:none;transition:all .15s}
+.inp:focus{border-color:var(--signal);box-shadow:0 0 0 3px #FF660022}
+.lbl{font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#71717A;margin-bottom:.35rem;display:block}
+.card{background:#fff;border:1px solid var(--line);border-radius:.9rem}
+.card-h{padding:.9rem 1.1rem;border-bottom:1px solid #F1F1EF;display:flex;align-items:center;justify-content:space-between}
+.prog{height:6px;border-radius:99px;background:#F1F1EF;overflow:hidden}
+.prog>div{height:100%;border-radius:99px;background:var(--ink);transition:width .6s cubic-bezier(.4,0,.2,1)}
+.prog.acc>div{background:var(--signal)}
+.fade-up{animation:fadeUp .35s cubic-bezier(.2,.7,.3,1) both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.modal-bg{animation:fadeIn .18s ease both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-panel{animation:popIn .22s cubic-bezier(.2,.9,.3,1.05) both}
+@keyframes popIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+.drawer{animation:slideIn .25s cubic-bezier(.2,.8,.25,1) both}
+@keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
+.toast-in{animation:toastIn .25s cubic-bezier(.2,.9,.3,1.1) both}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+.skel{background:linear-gradient(90deg,#F1F1EF 25%,#E7E7E4 50%,#F1F1EF 75%);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:.5rem}
+@keyframes sk{to{background-position:-200% 0}}
+.kanban-col{background:#F4F4F2;border:1px solid #ECECEA;border-radius:.8rem;min-width:250px}
+.kanban-card{background:#fff;border:1px solid var(--line);border-radius:.7rem;padding:.65rem .75rem;cursor:grab;transition:all .15s}
+.kanban-card:hover{border-color:#C9C9C6;box-shadow:0 4px 14px -6px rgba(0,0,0,.12);transform:translateY(-1px)}
+.kanban-card:active{cursor:grabbing}
+.drag-over{outline:2px dashed var(--signal);outline-offset:2px;background:#FFF6F0!important}
+.cal-cell{min-height:96px;border-right:1px solid #F1F1EF;border-bottom:1px solid #F1F1EF;padding:.35rem;transition:background .12s}
+.cal-cell:hover{background:#FCFCFB}
+.evt{font-size:.68rem;font-weight:600;padding:.15rem .45rem;border-radius:.4rem;margin-bottom:.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-left:3px solid}
+.avatar{width:26px;height:26px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:#fff;flex-shrink:0}
+.tabbtn{font-size:.8rem;font-weight:600;padding:.5rem .2rem;margin-right:1.2rem;color:#8E8E93;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tabbtn:hover{color:#111113}
+.tabbtn.active{color:#111113;border-color:var(--signal)}
+.seg{font-size:.75rem;font-weight:600;padding:.38rem .8rem;border-radius:.55rem;color:#71717A;transition:all .15s;white-space:nowrap}
+.seg.active{background:#111113;color:#fff}
+.seg:hover:not(.active){background:#EDEDEB;color:#111}
+.search-hl{background:#FFE3CC;border-radius:2px;padding:0 1px}
+@media (max-width:1023px){
+  #sidebar{display:none}
+  #sidebar.open{display:flex;position:fixed;inset:0 auto 0 0;z-index:60;width:270px}
+  #bottomnav{display:flex!important}
+  .cal-cell{min-height:64px}
+}
+#bottomnav{display:none}
+.line-clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* ---------- print: invoice & sales order (offline, save-as-PDF) ---------- */
+#print-paper{box-shadow:0 12px 32px -16px rgba(0,0,0,.18)}
+@page{size:A4;margin:11mm}
+@media print{
+  #sidebar,header,#bottomnav,#toasts,#drawer,#modal,.no-print{display:none!important}
+  #main{margin-left:0!important}
+  #view{padding:0!important;max-width:none!important}
+  body{background:#fff!important}
+  #print-paper{border:none!important;border-radius:0!important;box-shadow:none!important;max-width:none!important;padding:0!important}
+}

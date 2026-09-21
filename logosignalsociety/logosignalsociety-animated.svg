@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <style>
+      /* Scene 01: Central dot appears */
+      @keyframes dotIn {
+        0% { transform: scale(0); opacity: 0; }
+        60% { transform: scale(1.12); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+
+      /* Scene 02: Signal arcs expand outward like ripples */
+      @keyframes rippleExpand {
+        0% { 
+          transform: scale(0.15); 
+          opacity: 0.9;
+          stroke-width: 6;
+        }
+        70% {
+          opacity: 0.5;
+        }
+        100% { 
+          transform: scale(1); 
+          opacity: 1;
+          stroke-width: var(--final-sw);
+        }
+      }
+
+      /* Scene 02: Dots split */
+      @keyframes splitL {
+        0% { transform: translate(0,0) scale(0.3); opacity: 0; }
+        30% { opacity: 1; }
+        100% { transform: translate(-36px,-14px) scale(1); opacity: 1; }
+      }
+      @keyframes splitM {
+        0% { transform: translate(0,0) scale(0.3); opacity: 0; }
+        30% { opacity: 1; }
+        100% { transform: translate(34px,2px) scale(1); opacity: 1; }
+      }
+      @keyframes splitS {
+        0% { transform: translate(0,0) scale(0.3); opacity: 0; }
+        30% { opacity: 1; }
+        100% { transform: translate(-11px,40px) scale(1); opacity: 1; }
+      }
+
+      /* Scene 01→02: Initial dot fades */
+      @keyframes fadeOut {
+        0% { opacity: 1; }
+        100% { opacity: 0; }
+      }
+
+      /* Micro-settle */
+      @keyframes settle {
+        0% { transform: translate(0,0); }
+        40% { transform: translate(0.2px,-0.15px); }
+        70% { transform: translate(-0.1px,0.08px); }
+        100% { transform: translate(0,0); }
+      }
+
+      /* === ELEMENTS === */
+
+      /* Central dot */
+      .center-dot {
+        transform-origin: 256px 272px;
+        opacity: 0;
+        animation:
+          dotIn 0.6s cubic-bezier(0,0,0.2,1) forwards,
+          fadeOut 0.1s ease 1.0s forwards;
+      }
+
+      /* Expanding signal arcs */
+      .signal-arc {
+        fill: none;
+        stroke: #FF6600;
+        stroke-linecap: round;
+        transform-origin: 256px 272px;
+        opacity: 0;
+      }
+      .signal-arc--1 {
+        --final-sw: 22;
+        stroke-width: 6;
+        animation: rippleExpand 1.0s cubic-bezier(0.4,0,0.2,1) 0.5s forwards;
+      }
+      .signal-arc--2 {
+        --final-sw: 20;
+        stroke-width: 5;
+        animation: rippleExpand 1.0s cubic-bezier(0.4,0,0.2,1) 0.75s forwards;
+      }
+      .signal-arc--3 {
+        --final-sw: 18;
+        stroke-width: 4;
+        animation: rippleExpand 1.0s cubic-bezier(0.4,0,0.2,1) 1.0s forwards;
+      }
+      .signal-arc--4 {
+        --final-sw: 16;
+        stroke-width: 3;
+        animation: rippleExpand 1.0s cubic-bezier(0.4,0,0.2,1) 1.25s forwards;
+      }
+
+      /* Three dots */
+      .dot {
+        opacity: 0;
+        transform-origin: 256px 272px;
+      }
+      .dot--l { animation: splitL 0.65s cubic-bezier(0.4,0,0.2,1) 1.6s forwards; }
+      .dot--m { animation: splitM 0.65s cubic-bezier(0.4,0,0.2,1) 1.75s forwards; }
+      .dot--s { animation: splitS 0.65s cubic-bezier(0.4,0,0.2,1) 1.9s forwards; }
+
+      /* Settle */
+      .lockup {
+        animation: settle 0.3s cubic-bezier(0.25,0.1,0.25,1) 2.7s forwards;
+      }
+    </style>
+  </defs>
+
+  <g class="lockup">
+    <!-- Central dot -->
+    <circle class="center-dot" cx="256" cy="272" r="24" fill="#FF6600"/>
+
+    <!-- 4 signal arcs — expand outward like hero ripples, thicker, partial arcs -->
+    <path class="signal-arc signal-arc--1" d="M 162 192 Q 256 100 350 192"/>
+    <path class="signal-arc signal-arc--2" d="M 182 215 Q 256 148 330 215"/>
+    <path class="signal-arc signal-arc--3" d="M 182 300 Q 256 367 330 300"/>
+    <path class="signal-arc signal-arc--4" d="M 162 323 Q 256 415 350 323"/>
+
+    <!-- Three dots — independent, after arcs settle -->
+    <circle class="dot dot--l" cx="220" cy="258" r="32" fill="#FF6600"/>
+    <circle class="dot dot--m" cx="290" cy="274" r="24" fill="#FF6600"/>
+    <circle class="dot dot--s" cx="245" cy="312" r="18" fill="#FF6600"/>
+  </g>
+</svg>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Signal System · Signal Society</title>
+<meta name="description" content="Signal System — the internal business operating system for Signal Society. Marketing, projects, clients, pipeline, finances and intelligence in one clear signal."/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='30' cy='48' r='14' fill='%23FF6600'/><circle cx='62' cy='54' r='10' fill='%23FF6600'/><circle cx='45' cy='70' r='7' fill='%23FF6600'/></svg>"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">@theme { --color-signal: #FF6600; --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif; }</style>
+<link rel="stylesheet" href="assets/css/styles.css"/>
+<style>
+  #app.rail #sidebar{width:64px}#app.rail #sidebar .lblx,#app.rail #sidebar .secx,#app.rail #sidebar .brandx,#app.rail #sidebar .navtxt{display:none}
+  #app.rail #main{margin-left:64px}#app.rail .navlink{justify-content:center}
+  @media(min-width:1024px){#main{margin-left:264px}}
+</style>
+</head>
+<body class="bg-[#FAFAF9] text-[#111113]">
+
+<div id="app">
+  <!-- ============ SIDEBAR ============ -->
+  <aside id="sidebar" class="fixed top-0 left-0 bottom-0 w-[264px] bg-white border-r border-[#E8E8E6] z-50 flex-col hidden lg:flex overflow-hidden">
+    <div class="flex flex-col h-full">
+      <div class="px-4 pt-5 pb-4 flex items-center gap-2.5">
+        <span class="w-9 h-9 rounded-xl bg-[#111113] flex items-center justify-center flex-shrink-0">
+          <span class="flex items-end gap-[3px]"><span class="w-[5px] h-[5px] rounded-full bg-[#FF6600]"></span><span class="w-[7px] h-[7px] rounded-full bg-[#FF6600]"></span><span class="w-[4px] h-[4px] rounded-full bg-[#FF6600]"></span></span>
+        </span>
+        <div class="brandx leading-none"><div class="font-extrabold tracking-tight text-[.92rem]">Signal System</div><div class="text-[.62rem] font-semibold tracking-[.14em] text-zinc-400 mt-1">SIGNAL SOCIETY</div></div>
+        <button id="btn-collapse" class="ml-auto text-zinc-300 hover:text-black text-lg leading-none px-1" title="Collapse / expand">‹</button>
+      </div>
+      <div class="brandx mx-4 mb-1 rounded-xl px-3.5 py-3 flex items-center gap-3" style="background:#FFF1E8;border:1px solid #FF660022">
+        <span class="dot" style="background:#FF6600;width:9px;height:9px;box-shadow:0 0 0 4px #FF660022"></span>
+        <div><div class="text-[.74rem] font-bold">Live signal</div><div class="text-[.66rem] text-zinc-500">All systems operational</div></div>
+      </div>
+      <nav id="nav" class="flex-1 overflow-y-auto px-3 pb-4"></nav>
+      <div class="lblx p-3 border-t border-[#F1F1EF]">
+        <div class="flex items-center gap-2.5 rounded-xl bg-[#FAFAF9] border border-[#F1F1EF] px-3 py-2.5">
+          <span class="avatar" style="background:#111113">SO</span>
+          <div class="leading-tight"><div class="text-[.76rem] font-bold">Signal Operator</div><div class="text-[.64rem] text-zinc-400">Admin · Production</div></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div id="main" class="min-h-screen flex flex-col">
+    <header class="sticky top-0 z-40 bg-[#FAFAF9]/85 backdrop-blur-md border-b border-[#E8E8E6]">
+      <div class="flex items-center gap-2 px-4 lg:px-8 h-[60px]">
+        <button id="btn-menu" class="lg:hidden btn-g !px-2.5">☰</button>
+        <button id="btn-search" class="hidden sm:flex items-center gap-2.5 bg-white border border-[#E8E8E6] rounded-xl pl-3 pr-2 py-[7px] text-[.8rem] text-zinc-400 w-64 hover:border-zinc-900 transition text-left">
+          <span>⌕</span><span class="flex-1">Search anything…</span><kbd class="text-[.62rem] font-bold bg-[#F4F4F2] rounded-md px-1.5 py-0.5">⌘K</kbd>
+        </button>
+        <button id="btn-search-m" class="sm:hidden btn-g !px-2.5">⌕</button>
+        <div class="ml-auto flex items-center gap-2">
+          <span class="hidden md:inline-flex chip"><span class="dot" style="background:#16A34A"></span>Local mode · Supabase-ready</span>
+          <button id="btn-quick" class="btn-a !py-2">+ <span class="hidden sm:inline">Quick create</span></button>
+          <button id="btn-notif" class="relative w-9 h-9 rounded-xl bg-white border border-[#E8E8E6] flex items-center justify-center hover:border-zinc-900 transition">◍
+            <span id="notif-badge" class="absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full text-[.6rem] font-bold text-white items-center justify-center" style="background:#FF6600;display:none">0</span>
+          </button>
+          <button id="btn-avatar" class="avatar" style="background:#111113;width:36px;height:36px;font-size:.7rem">SO</button>
+        </div>
+      </div>
+    </header>
+    <main id="view" class="flex-1 px-4 lg:px-8 py-6 pb-28 lg:pb-12 max-w-[1400px] w-full mx-auto"></main>
+  </div>
+
+  <!-- mobile bottom nav -->
+  <nav id="bottomnav" class="fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur border-t border-[#E8E8E6] items-stretch justify-around px-2 py-1.5">
+    <a href="#/dashboard" class="flex flex-col items-center gap-0.5 px-3 py-1.5 text-[.6rem] font-bold text-zinc-500"><span class="text-base">◈</span>Home</a>
+    <a href="#/projects" class="flex flex-col items-center gap-0.5 px-3 py-1.5 text-[.6rem] font-bold text-zinc-500"><span class="text-base">▤</span>Work</a>
+    <button id="btn-search-m2" class="flex flex-col items-center gap-0.5 px-3 py-1.5 text-[.6rem] font-bold text-white"><span class="w-11 h-11 -mt-6 rounded-2xl flex items-center justify-center text-lg shadow-lg" style="background:#FF6600">+</span></button>
+    <a href="#/pipeline" class="flex flex-col items-center gap-0.5 px-3 py-1.5 text-[.6rem] font-bold text-zinc-500"><span class="text-base">⬢</span>CRM</a>
+    <a href="#/finance" class="flex flex-col items-center gap-0.5 px-3 py-1.5 text-[.6rem] font-bold text-zinc-500"><span class="text-base">₿</span>Money</a>
+  </nav>
+</div>
+
+<div id="toasts" class="fixed bottom-20 lg:bottom-6 right-4 z-[100] space-y-2"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/seed.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/db.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/views.js"></script>
+<script src="assets/js/app.js"></script>
+<script>document.getElementById('btn-search-m').onclick=()=>window.SignalApp.openSearch();document.getElementById('btn-search-m2').onclick=()=>window.SignalApp.quickCreate();</script>
+</body>
+</html>
