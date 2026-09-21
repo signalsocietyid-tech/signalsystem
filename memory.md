@@ -13,6 +13,7 @@
 - Project Vercel: `signalsystem` (akun `signalsocietyid-tech`, Hobby). Auto-deploy dari push ke `main`.
 - Fix yang dilakukan saat deploy: hapus field lawas `"public": true` dari `vercel.json` (gagal validasi skema), matikan Vercel Authentication (`ssoProtection: null` via API) agar publik bisa akses.
 - Catatan: branch `master` masih ada di remote (default branch GitHub masih `master` — perlu owner yang ganti ke `main` di Settings, lalu hapus `master`).
+- Tim: 1 orang (Sissy, Account Manager) — `config.js:team` + `currentUser`, default owner/assignee form, signer dokumen print, dan profil sidebar semua Sissy.
 
 ## Keputusan Arsitektur
 

@@ -639,7 +639,7 @@ window.Views = (function () {
       + docTotals(i, cur, u, true)
       + docPayTo(u)
       + (i.notes ? `<div style="font-size:12px;color:#52525B;margin-bottom:8px;"><b>Notes — </b>${u.esc(i.notes)}</div>` : "")
-      + docSign("Dana Cole · Finance", (s.get("clients", i.client_id) || {}).contact_person || "Client");
+      + docSign("Sissy · Finance", (s.get("clients", i.client_id) || {}).contact_person || "Client");
     return docShell("Invoice " + i.number, paper,
       `<button class="btn-g" data-receive="${i.id}">+ Receive payment</button><a class="btn-g" href="#/invoices">All invoices</a>`);
   }
@@ -657,7 +657,7 @@ window.Views = (function () {
       + docItems(o.items, cur, u)
       + docTotals(o, cur, u, false)
       + (o.notes ? `<div style="font-size:12px;color:#52525B;margin-bottom:8px;"><b>Terms — </b>${u.esc(o.notes)}</div>` : `<div style="font-size:12px;color:#52525B;margin-bottom:8px;"><b>Terms — </b>Valid 30 days. Confirming this order automatically issues the invoice.</div>`)
-      + docSign("Sarah Chen · Operations", (s.get("clients", o.client_id) || {}).contact_person || "Client");
+      + docSign("Sissy · Operations", (s.get("clients", o.client_id) || {}).contact_person || "Client");
     return docShell("Sales Order " + o.number, paper,
       `${inv ? `<a class="btn-g" href="#/print/invoice/${inv.id}">View invoice →</a>` : `<button class="btn-p" data-so-invoice="${o.id}">Create invoice now</button>`}<a class="btn-g" href="#/sales-orders">All orders</a>`);
   }
@@ -742,7 +742,7 @@ window.Views = (function () {
       + docItems(o.items, cur, u)
       + docTotals(o, cur, u, false)
       + (o.notes ? `<div style="font-size:12px;color:#52525B;margin-bottom:8px;"><b>Terms — </b>${u.esc(o.notes)}</div>` : `<div style="font-size:12px;color:#52525B;margin-bottom:8px;"><b>Terms — </b>Confirming this order automatically issues the vendor bill.</div>`)
-      + docSign("Dana Cole · Finance", (s.get("suppliers", o.supplier_id) || {}).contact_person || "Supplier");
+      + docSign("Sissy · Finance", (s.get("suppliers", o.supplier_id) || {}).contact_person || "Supplier");
     return docShell("Purchase Order " + o.number, paper,
       `${bill ? `<a class="btn-g" href="#/print/bill/${bill.id}">View bill →</a>` : `<button class="btn-p" data-po-bill="${o.id}">Create bill now</button>`}<a class="btn-g" href="#/purchase-orders">All orders</a>`);
   }
@@ -761,7 +761,7 @@ window.Views = (function () {
       + docTotals(b, cur, u, true)
       + docPayFrom(u)
       + (b.notes ? `<div style="font-size:12px;color:#52525B;margin-bottom:8px;"><b>Notes — </b>${u.esc(b.notes)}</div>` : "")
-      + docSign("Dana Cole · Finance", (s.get("suppliers", b.supplier_id) || {}).contact_person || "Supplier");
+      + docSign("Sissy · Finance", (s.get("suppliers", b.supplier_id) || {}).contact_person || "Supplier");
     return docShell("Bill " + b.number, paper,
       `<button class="btn-g" data-paybill="${b.id}">Pay bill</button><a class="btn-g" href="#/bills">All bills</a>`);
   }

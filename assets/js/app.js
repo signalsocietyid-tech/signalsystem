@@ -207,7 +207,7 @@
       ${F("Service interest", Sel("service_interest", C().serviceKeys.map((x) => `<option>${x.name}</option>`).join("")))}
       ${F("Deal value ($)", `<input name="deal_value" type="number" class="inp font-num" value="10000"/>`)}
       ${F("Stage", Sel("stage", opt(C().pipelineStages, "New Lead")))} ${F("Probability %", `<input name="probability" type="number" class="inp font-num" value="20"/>`)}
-      ${F("Owner", Sel("assigned_to", teamOpts("Sarah Chen")))} ${F("Follow-up", Dd("next_follow_up", S().today()))}
+      ${F("Owner", Sel("assigned_to", teamOpts("Sissy")))} ${F("Follow-up", Dd("next_follow_up", S().today()))}
       ${F("Notes", Ta("notes", ""), 1)}`, (v) => {
       if (!v.company) return U().toast("Company required");
       S().insert("leads", { ...v, deal_value: +v.deal_value || 0, probability: +v.probability || 20, last_contact: S().today() });
@@ -219,7 +219,7 @@
     formModal(tpl ? "New project from template" : "New project", `
       ${F("Project name *", T("name", tpl ? tpl.name.replace(" Template", "") + " — New Client" : ""), 1)}
       ${F("Client", Sel("client_id", clientOpts()))} ${F("Service", Sel("service_key", C().serviceKeys.map((x) => `<option value="${x.key}">${x.name}</option>`).join("")))}
-      ${F("Status", Sel("status", opt(C().projectStatuses, "Planning")))} ${F("Owner", Sel("owner", teamOpts("Sarah Chen")))}
+      ${F("Status", Sel("status", opt(C().projectStatuses, "Planning")))} ${F("Owner", Sel("owner", teamOpts("Sissy")))}
       ${F("Start", Dd("start_date", S().today()))} ${F("Deadline", Dd("deadline", ""))}
       ${F("Budget ($)", `<input name="budget" type="number" class="inp font-num" value="15000"/>`)}
       ${F("Contract value ($)", `<input name="contract_value" type="number" class="inp font-num" value="18000"/>`)}
@@ -236,7 +236,7 @@
     formModal("New task", `
       ${F("Title *", T("title", "", "Website redesign"), 1)} ${F("Project", Sel("project_id", projectOpts(projectId)), 1)}
       ${F("Status", Sel("status", opt(C().taskStatuses, status || "To Do")))} ${F("Priority", Sel("priority", opt(C().taskPriorities, "Medium")))}
-      ${F("Assignee", Sel("assignee", teamOpts("Sarah Chen")))} ${F("Due date", Dd("due_date", S().today()))}
+      ${F("Assignee", Sel("assignee", teamOpts("Sissy")))} ${F("Due date", Dd("due_date", S().today()))}
       ${F("Est. hours", `<input name="est_hours" type="number" class="inp font-num" value="4"/>`)}
       ${F("Description", Ta("description", ""), 1)}`, (v) => {
       if (!v.title) return U().toast("Title required");
@@ -260,7 +260,7 @@
       ${F("Title *", T("title", ""), 1)} ${F("Client", Sel("client_id", clientOpts()))}
       ${F("Campaign", `<select name="campaign_id" class="inp"><option value="">—</option>${S().list("campaigns").map((c) => `<option value="${c.id}">${c.name}</option>`).join("")}</select>`)}
       ${F("Platform", Sel("platform", opt(C().platforms, "Instagram")))} ${F("Type", Sel("content_type", opt(C().contentTypes, "Static")))}
-      ${F("Status", Sel("status", opt(C().contentStatuses, "Idea")))} ${F("Owner", Sel("assignee", teamOpts("Leo Fournier")))}
+      ${F("Status", Sel("status", opt(C().contentStatuses, "Idea")))} ${F("Owner", Sel("assignee", teamOpts("Sissy")))}
       ${F("Publish date", Dd("publish_date", S().today()))} ${F("Deadline", Dd("deadline", S().today()))}
       ${F("Caption / notes", Ta("caption", ""), 1)}`, (v) => {
       if (!v.title) return U().toast("Title required");
@@ -799,7 +799,7 @@
     if (a === "back") return history.length > 1 ? history.back() : (location.hash = "#/dashboard");
     if (a === "new-expense") return newExpense();
     if (a === "new-mktevent") {
-      return formModal("New marketing event", `${F("Title *", T("title", ""), 1)}${F("Channel", T("channel", "Meta"))}${F("Start", Dd("start_date", S().today()))}${F("End", Dd("end_date", S().today()))}${F("Status", Sel("status", opt(C().marketingStatuses, "Planned")))}${F("Owner", Sel("owner", teamOpts("Sarah Chen")))}`, (v) => {
+      return formModal("New marketing event", `${F("Title *", T("title", ""), 1)}${F("Channel", T("channel", "Meta"))}${F("Start", Dd("start_date", S().today()))}${F("End", Dd("end_date", S().today()))}${F("Status", Sel("status", opt(C().marketingStatuses, "Planned")))}${F("Owner", Sel("owner", teamOpts("Sissy")))}`, (v) => {
         if (!v.title) return U().toast("Title required");
         S().insert("marketingEvents", { ...v, kind: "campaign", campaign_id: null, client_id: null });
       });

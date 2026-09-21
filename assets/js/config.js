@@ -48,11 +48,7 @@ window.SignalConfig = {
   contentTypes: ["Static","Carousel","Reel","Video","Story","Article","Blog","Advertisement","UGC","Other"],
   expenseCategories: ["Operations","Software","Marketing","Team","Transport","Equipment","Production","Freelance","Other"],
   team: [
-    { name: "Sarah Chen",  role: "Project Manager", initials: "SC", color: "#FF6600" },
-    { name: "Marcus Webb", role: "Lead Developer",  initials: "MW", color: "#111113" },
-    { name: "Aisha Khan",  role: "Designer",        initials: "AK", color: "#6B4EFF" },
-    { name: "Leo Fournier",role: "Marketing Lead",  initials: "LF", color: "#0EA5A0" },
-    { name: "Dana Cole",   role: "Finance",         initials: "DC", color: "#B7791F" },
+    { name: "Sissy", role: "Account Manager", initials: "SS", color: "#FF6600" },
   ],
-  currentUser: { name: "Signal Operator", role: "Admin", initials: "SO" },
+  currentUser: { name: "Sissy", role: "Admin", initials: "SS" },
 };
