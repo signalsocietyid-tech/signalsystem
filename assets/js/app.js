@@ -341,15 +341,22 @@
     if (d.startsWith("0")) return "62" + d.slice(1);
     return d;
   }
+  // WhatsApp opener: lead with the business's potential, then who we are, then a demo offer.
+  // Draft only — the exact text still goes through an approval before it can be sent.
   function waBrief(c) {
+    const name = c.company_name;
     const svcName = (k) => (C().serviceKeys.find((x) => x.key === k) || {}).name || k;
     const mine = [...new Set(S().list("projects").filter((p) => p.client_id === c.id && p.service_key).map((p) => svcName(p.service_key)))];
-    const act = S().list("services").filter((x) => x.is_active !== false && x.name).map((x) => x.name);
-    const offer = (act.length ? act : C().serviceKeys.map((x) => x.name)).join(", ");
-    const first = mine.length
-      ? `Terima kasih sudah memakai layanan ${mine.join(", ")} bersama kami.`
-      : `Kami membantu bisnis seperti ${c.company_name} bertumbuh lewat layanan digital.`;
-    return `Halo ${c.contact_person || "Bapak/Ibu"} dari ${c.company_name}, saya Sissy dari Signal Society.\n\n${first}\nKami juga menyediakan: ${offer}.\n\nBoleh saya kirimkan penawaran singkat untuk ${c.company_name}?`;
+    // active services, said the way a person would say them (grouped by category)
+    const PHRASE = { Build: "website", Commerce: "toko online", Systems: "sistem bisnis seperti kasir (POS) dan ERP", Marketing: "pengelolaan media sosial & digital marketing", Data: "dashboard laporan bisnis" };
+    const cats = [...new Set(S().list("services").filter((x) => x.is_active !== false).map((x) => x.category))].map((k) => PHRASE[k]).filter(Boolean);
+    const list = cats.length ? cats : ["website", "sistem bisnis", "pengelolaan media sosial"];
+    const services = list.length > 1 ? list.slice(0, -1).join(", ") + ", sampai " + list[list.length - 1] : list[0];
+    const hello = c.contact_person ? `Halo ${c.contact_person},` : `Halo Bapak/Ibu dari ${name},`;
+    const hook = mine.length
+      ? `Terima kasih sudah mempercayakan ${mine.join(", ")} kepada kami. Saya melihat ${name} masih punya potensi besar untuk tumbuh, dan kami ingin membantu mengembangkan websitenya lebih jauh supaya makin mudah ditemukan dan dipercaya calon pelanggan.`
+      : `Saya Sissy dari Signal Society. Saya melihat potensi yang besar dari ${name}, dan kami ingin membantu dalam pengembangan websitenya — supaya ${name} lebih mudah ditemukan calon pelanggan, terlihat lebih profesional, dan bisa menerima pesanan atau pertanyaan kapan saja.`;
+    return `${hello}\n\n${hook}\n\nSignal Society adalah partner digital untuk bisnis yang sedang bertumbuh. Kami membantu lewat ${services} — semuanya disesuaikan dengan kebutuhan dan skala bisnisnya.\n\nKami juga bisa buatkan demo websitenya terlebih dahulu, gratis, jadi Bapak/Ibu bisa melihat langsung gambarannya untuk ${name} sebelum memutuskan apa pun.\n\nApakah berkenan kami buatkan demonya, Pak/Bu? 🙏`;
   }
   function newLead() {
     formModal("New lead", `
