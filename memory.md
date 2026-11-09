@@ -105,6 +105,7 @@ App sekarang **live ke Supabase** (bukan lagi local mode + Push/Pull manual).
 - **Database:** `supabase/migrations/20261107000000_governance.sql` (live 7 Nov) + `20261109000000_app_compat.sql`. Tes: `cd tests; npm install; npm test` (PGlite, membangun DB dari `schema.sql` + migrations).
 - **Bug diperbaiki:** form Edit client mengosongkan Notes (`Ta("notes", "")`) → sekarang memakai notes yang ada. Penting karena 1.408 client hasil impor Google Maps menyimpan `place_id` di notes.
 - Mode offline/demo: `localStorage.signal_supabase_key = "local"`.
+- **Cache:** dulu `/assets/*` di-cache `immutable` 1 tahun padahal nama file tidak berubah → browser lama tetap memakai JS lama. Sekarang JS/CSS `max-age=0, must-revalidate` (CDN Vercel tetap cache, browser cek ulang tiap load) + `?v=20261109` di `index.html` untuk melewati cache lama. Deploy berikutnya tidak perlu bump versi lagi.
 
 ## Next Step (belum dikerjakan)
 
