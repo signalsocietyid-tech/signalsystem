@@ -1,0 +1,13 @@
+{
+  "name": "signalsystem-db-tests",
+  "private": true,
+  "description": "Dev-only: database governance tests (PGlite, no Docker). The app itself stays static with no build step.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test db.test.mjs",
+    "columns": "node gen-columns.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.15"
+  }
+}

@@ -10,6 +10,9 @@
   const NAV = [
     { section: "Overview" },
     { label: "Dashboard", route: "#/dashboard", icon: "◈" },
+    { section: "Governance" },
+    { label: "Approvals", route: "#/approvals", icon: "✦" },
+    { label: "Outbox", route: "#/outbox", icon: "↗" },
     { section: "Work" },
     { label: "Projects", route: "#/projects", icon: "▤" },
     { label: "Tasks", route: "#/tasks", icon: "✓" },
@@ -75,6 +78,8 @@
     "#/files": () => V().files(),
     "#/activity": () => V().activity(),
     "#/settings": () => V().settings(),
+    "#/approvals": () => V().approvals(),
+    "#/outbox": () => V().outbox(),
   };
 
   function renderNav() {
@@ -88,16 +93,49 @@
       if (n.section) return `<div class="px-2.5 mt-5 mb-1.5 text-[.62rem] font-bold tracking-[.12em] text-zinc-400">${n.section.toUpperCase()}</div>`;
       const active = base === n.route;
       const badge = n.route === "#/tasks" ? S().list("tasks").filter((t) => t.status !== "Done" && S().isOverdue(t.due_date)).length
-        : n.route === "#/invoices" ? S().list("invoices").filter((i) => i.status === "Overdue").length : 0;
+        : n.route === "#/invoices" ? S().list("invoices").filter((i) => i.status === "Overdue").length
+        : n.route === "#/approvals" ? S().list("approvals").filter((a) => ["pending", "deferred"].includes(a.status)).length
+        : n.route === "#/outbox" ? S().list("outbox").filter((o) => o.status === "ready").length : 0;
       return `<a href="${n.route}" class="navlink ${active ? "active" : ""}"><span class="navdot"></span><span class="flex-1">${n.label}</span>${badge ? `<span class="text-[.62rem] font-bold px-1.5 py-0.5 rounded-full" style="background:#FF6600;color:#fff">${badge}</span>` : ""}</a>`;
     }).join("");
+    // who is signed in + where data lives
+    const me = C().currentUser, live = window.DB.isLive();
+    const chip = document.getElementById("sync-chip");
+    if (chip) chip.innerHTML = `<span class="dot" style="background:${live ? "#16A34A" : "#A1A1AA"}"></span>${live ? "Live · Supabase" : "Local mode"}`;
+    const setText = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+    setText("me-name", me.name); setText("me-role", me.role + (live ? " · Live" : " · Local"));
+    setText("btn-avatar", me.initials || "SS");
     // topbar badges
     const unread = S().list("notifications").filter((n) => !n.is_read).length;
     const nb = document.getElementById("notif-badge");
     if (nb) { nb.textContent = unread; nb.style.display = unread ? "flex" : "none"; }
   }
 
+  /* ---------- sign-in gate (Supabase mode) ---------- */
+  const needsLogin = () => window.DB.useRemote() && !window.DB.Auth.signedIn();
+  function showLogin(error) {
+    document.getElementById("app").style.display = "none";
+    let root = document.getElementById("login-root");
+    if (!root) { root = document.createElement("div"); root.id = "login-root"; document.body.appendChild(root); }
+    root.innerHTML = V().login(error);
+    const form = document.getElementById("login-form");
+    setTimeout(() => document.getElementById("login-email")?.focus(), 50);
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("login-submit");
+      btn.disabled = true; btn.textContent = "Signing in…";
+      try {
+        await window.DB.Auth.signIn(form.email.value.trim(), form.password.value);
+        btn.textContent = "Loading workspace…";
+        await window.DB.start();
+        root.remove(); document.getElementById("app").style.display = "";
+        render();
+      } catch (err) { showLogin(err.message); }
+    };
+  }
+
   function render() {
+    if (needsLogin()) return showLogin();
     const raw = location.hash || "#/dashboard";
     const [path] = raw.split("?");
     let html;
@@ -195,28 +233,107 @@
       ${F("Industry", T("industry", existing?.industry))}
       ${F("Status", Sel("status", opt(C().clientStatuses, existing?.status || "Lead")))}
       ${F("Account manager", Sel("account_manager", teamOpts(existing?.account_manager)))}
-      ${F("Notes", Ta("notes", ""), 1)}`, (v) => {
+      ${F("Notes", Ta("notes", existing?.notes), 1)}`, (v) => {
       if (!v.company_name) return U().toast("Company name required");
       if (existing) S().update("clients", existing.id, { ...v, lifetime_value: existing.lifetime_value });
       else S().insert("clients", { ...v, tags: [], lifetime_value: 0 });
     });
   }
+  // WhatsApp from Customers goes through an approval: the exact text is approved, queued once and sent by hand.
   function chatClient(id) {
     const c = S().get("clients", id); if (!c) return;
     if (!waNumber(c.phone)) { U().toast("Add a phone number first"); newClient(c); return; }
+    const lead = S().list("leads").find((l) => l.client_id === c.id && !["Won", "Lost"].includes(l.stage));
+    requestMessage({
+      client_id: c.id, lead_id: lead ? lead.id : null, company: c.company_name, channel: "whatsapp",
+      to: c.phone, body: waBrief(c), category: c.status === "Active Client" ? "external-comms" : "outreach",
+      onTo: (to) => { if ((to || "") !== (c.phone || "")) S().update("clients", c.id, { phone: to }); },
+    });
+  }
+
+  function requestMessage(o) {
+    if (!window.DB.isLive()) return U().toast("Sign in first", "Messages need an approval — sign in from Settings.");
+    const canDecide = window.DB.Auth.canDecide(o.category);
+    const chOpts = C().approvalChannels.map(([v, l]) => `<option value="${v}" ${v === o.channel ? "selected" : ""}>${l}</option>`).join("");
+    const read = () => { const v = {}; document.querySelectorAll("#modal-body [name]").forEach((el) => (v[el.name] = el.value.trim())); return v; };
+    const build = (v) => {
+      const recipient = v.m_channel === "whatsapp" ? waNumber(v.m_to) : v.m_to;
+      if (!recipient) { U().toast("Add the recipient first"); return null; }
+      if (!v.m_body) { U().toast("Write the message first"); return null; }
+      if (o.onTo) o.onTo(v.m_to);
+      return {
+        category: o.category, lead_id: o.lead_id || null, client_id: o.client_id || null,
+        title: (v.m_channel === "whatsapp" ? "WhatsApp" : v.m_channel === "email" ? "Email" : "Instagram") + " to " + o.company,
+        proposed_action: "Send " + v.m_channel + " to " + recipient, context: v.m_context || null,
+        payload: { channel: v.m_channel, recipient, subject: v.m_subject || "", body: v.m_body },
+      };
+    };
+    const busy = (b) => document.querySelectorAll("#modal-actions button, .modal button").forEach((x) => (x.disabled = b));
     U().openModal({
-      title: "Chat via WhatsApp", sub: `${c.company_name} · brief siap kirim, bisa diedit dulu`,
-      body: `<div class="grid grid-cols-1 gap-3">${F("To (WhatsApp number)", T("wa_to", c.phone), 1)}${F("Message", `<textarea name="wa_msg" class="inp" rows="6">${esc(waBrief(c))}</textarea>`, 1)}</div>`,
+      title: "Request approval to send", sub: `${o.company} · the exact text below is what gets approved and sent`,
+      body: `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        ${F("Channel", `<select name="m_channel" class="inp">${chOpts}</select>`)}${F("To", T("m_to", o.to, "62812… or email"))}
+        ${F("Subject (email)", T("m_subject", ""), 1)}
+        ${F("Message", `<textarea name="m_body" class="inp" rows="7">${esc(o.body || "")}</textarea>`, 1)}
+        ${F("Why now (context for the approver)", T("m_context", ""), 1)}</div>`,
       actions: [{ label: "Cancel", ghost: true, onClick: () => U().closeModal() },
-        { label: "Open WhatsApp", primary: true, id: "m-wa", onClick: () => {
-          const vals = {}; document.querySelectorAll("#modal-body [name]").forEach((el) => (vals[el.name] = el.value));
-          const num = waNumber(vals.wa_to);
-          if (!num) return U().toast("Add a phone number first");
-          if ((vals.wa_to || "") !== (c.phone || "")) S().update("clients", c.id, { phone: vals.wa_to });
-          U().closeModal();
-          window.open("https://wa.me/" + num + "?text=" + encodeURIComponent(vals.wa_msg || ""), "_blank");
+        { label: "Request approval", ghost: canDecide, primary: !canDecide, onClick: async () => {
+          const a = build(read()); if (!a) return;
+          busy(true);
+          try { await window.DB.gov.request(a); U().closeModal(); U().toast("Sent to Approvals.", "It can be sent once it is approved."); render(); }
+          catch (e) { busy(false); U().toast("Not sent for approval — " + e.message); }
+        } },
+        ...(canDecide ? [{ label: "Approve & open", primary: true, onClick: async () => {
+          const a = build(read()); if (!a) return;
+          const win = a.payload.channel === "whatsapp" ? window.open("", "_blank") : null; // opened now so the browser does not block it
+          busy(true);
+          try {
+            const ap = await window.DB.gov.request(a);
+            await window.DB.gov.decide(ap.id, "approved");
+            const ob = await window.DB.gov.queue(ap.id);
+            U().closeModal(); render();
+            if (win) win.location = "https://wa.me/" + ob.recipient + "?text=" + encodeURIComponent(ob.body);
+            else if (ob.channel === "email") location.href = "mailto:" + encodeURIComponent(ob.recipient) + "?subject=" + encodeURIComponent(ob.subject || "") + "&body=" + encodeURIComponent(ob.body);
+            confirmSent(ob.id);
+          } catch (e) { if (win) win.close(); busy(false); U().toast("Not sent — " + e.message); render(); }
+        } }] : [])],
+    });
+  }
+
+  function confirmSent(outboxId) {
+    U().openModal({
+      title: "Did you send it?", sub: "Mark it sent only after the message really went out.",
+      body: `<p class="text-[.84rem] text-zinc-600">The approved text is open in WhatsApp / your mail app. If you did not send it, it stays in the Outbox.</p>`,
+      actions: [{ label: "Not yet", ghost: true, onClick: () => { U().closeModal(); location.hash = "#/outbox"; } },
+        { label: "Yes, mark sent", primary: true, onClick: async () => {
+          try { await window.DB.gov.mark(outboxId, "sent", "sent by hand"); U().closeModal(); U().toast("Marked sent.", "Logged on the timeline."); render(); }
+          catch (e) { U().toast("Not saved — " + e.message); }
         } }],
     });
+  }
+
+  // Stage changes: the database decides (move_lead). Back, Lost and Nurture need a reason.
+  async function moveLeadUI(id, to, reason) {
+    const l = S().get("leads", id); if (!l || l.stage === to) return;
+    const order = C().pipelineStages.slice(0, 7);
+    const back = order.includes(to) && order.includes(l.stage) && order.indexOf(to) < order.indexOf(l.stage);
+    if ((to === "Lost" || to === "Nurture" || back) && !reason) return askReason(id, to);
+    try { await window.DB.moveLead(id, to, reason); U().toast("Moved to " + to + "."); }
+    catch (e) { U().toast("Not moved — " + e.message); }
+    render();
+  }
+  function askReason(id, to) {
+    U().openModal({
+      title: "Why move to " + to + "?", sub: "The reason is kept on the lead and in the history.",
+      body: `<textarea id="mv-reason" class="inp" rows="3" placeholder="${to === "Lost" ? "e.g. Chose another vendor" : to === "Nurture" ? "e.g. Budget next quarter" : "e.g. Client changed the scope"}"></textarea>`,
+      actions: [{ label: "Cancel", ghost: true, onClick: () => { U().closeModal(); render(); } },
+        { label: "Move", primary: true, onClick: () => {
+          const r = document.getElementById("mv-reason").value.trim();
+          if (!r) return U().toast("Add a reason first");
+          U().closeModal(); moveLeadUI(id, to, r);
+        } }],
+    });
+    setTimeout(() => document.getElementById("mv-reason")?.focus(), 50);
   }
   function waNumber(raw) {
     const d = String(raw || "").replace(/\D/g, "");
@@ -775,22 +892,69 @@
       <p class="text-[.83rem] text-zinc-600 mb-4">${u.esc(l.notes || "")}</p>
       <label class="lbl">Move stage</label>
       <select id="l-stage" class="inp mb-2">${opt(C().pipelineStages, l.stage)}</select>
+      <input id="l-reason" class="inp mb-2" placeholder="Reason — needed to move back, Lost or Nurture"/>
+      ${l.stage_reason ? `<div class="text-[.74rem] text-zinc-500 mb-2">Last reason: “${u.esc(l.stage_reason)}”</div>` : ""}
       <div class="grid grid-cols-2 gap-2 mb-4"><div><label class="lbl">Value</label><input id="l-val" type="number" class="inp font-num" value="${l.deal_value}"/></div><div><label class="lbl">Probability</label><input id="l-prob" type="number" class="inp font-num" value="${l.probability}"/></div></div>
       <div class="text-[.8rem] rounded-lg p-3 mb-4" style="background:#FFF1E8">Expected revenue <b class="font-num">${u.money((+l.deal_value || 0) * (+l.probability || 0) / 100)}</b></div>
       <div class="flex gap-2"><button class="btn-a flex-1" id="l-save">Save Changes</button><button class="btn-p" id="l-convert">Convert to client</button></div>
-      <button class="btn-g w-full mt-2 !text-red-600 !border-red-200" id="l-del">Delete lead</button>`);
+      <button class="btn-g w-full mt-2 !text-red-600 !border-red-200" id="l-del">Delete lead</button>
+      ${window.DB.isLive() ? leadConversation(l) : ""}`);
     document.getElementById("l-save").onclick = () => {
-      s.update("leads", id, { stage: document.getElementById("l-stage").value, deal_value: +document.getElementById("l-val").value || 0, probability: +document.getElementById("l-prob").value || 0 });
-      U().toast("Changes saved."); render(); U().closeDrawer();
+      const to = document.getElementById("l-stage").value, reason = document.getElementById("l-reason").value.trim();
+      const val = +document.getElementById("l-val").value || 0, prob = +document.getElementById("l-prob").value || 0;
+      if (val !== +l.deal_value || prob !== +l.probability) s.update("leads", id, { deal_value: val, probability: prob });
+      U().closeDrawer();
+      if (to !== l.stage) moveLeadUI(id, to, reason); else { U().toast("Changes saved."); render(); }
     };
+    const req = document.getElementById("l-req");
+    if (req) req.onclick = () => { U().closeDrawer(); requestMessage({ lead_id: l.id, client_id: l.client_id, company: l.company, channel: l.phone ? "whatsapp" : "email", to: l.phone || l.email, body: "", category: ["New Lead", "Qualified", "Nurture"].includes(l.stage) ? "outreach" : "external-comms" }); };
+    const rep = document.getElementById("l-reply");
+    if (rep) rep.onclick = () => logReply(l);
     document.getElementById("l-convert").onclick = () => convertLead(id);
     document.getElementById("l-del").onclick = () => U().confirmDestructive("Delete this lead?", "The lead record will be removed.", () => { s.remove("leads", id); render(); });
   }
 
-  function convertLead(id) {
+  function leadConversation(l) {
+    const s = S(), u = U(), V_ = V();
+    const aps = s.list("approvals").filter((a) => a.lead_id === l.id || (l.client_id && a.client_id === l.client_id));
+    const obs = s.list("outbox").filter((o) => o.lead_id === l.id || (l.client_id && o.client_id === l.client_id));
+    const talk = s.list("leadActivities").filter((x) => x.lead_id === l.id).slice(0, 8);
+    return `<div class="mt-6 pt-5 border-t border-[#F1F1EF]">
+      <div class="kpi-label mb-2">Conversation & approvals</div>
+      <div class="flex gap-2 mb-3"><button class="btn-a flex-1" id="l-req">Request message approval</button><button class="btn-g" id="l-reply">Log their reply</button></div>
+      ${aps.length ? aps.slice(0, 5).map((a) => `<div class="flex items-center justify-between gap-2 py-1.5 text-[.78rem] border-b border-[#F4F4F2]"><span class="truncate">${u.esc(a.title)}</span>${u.pill(V_.APPROVAL_LABEL[a.status])}</div>`).join("") : `<div class="text-[.76rem] text-zinc-400 mb-2">No approvals yet. Moving past Qualified needs a sent message or their reply.</div>`}
+      ${obs.length ? obs.slice(0, 3).map((o) => `<div class="flex items-center justify-between gap-2 py-1.5 text-[.78rem] border-b border-[#F4F4F2]"><span class="truncate">${u.esc(o.channel)} → ${u.esc(o.recipient)}</span>${u.pill(V_.OUTBOX_LABEL[o.status])}</div>`).join("") : ""}
+      ${talk.length ? `<div class="mt-3 space-y-2">${talk.map((t) => `<div class="text-[.78rem] pl-3 border-l-2" style="border-color:${t.direction === "inbound" ? "#16A34A" : t.direction === "outbound" ? "#FF6600" : "#E4E4E7"}"><div class="text-[.68rem] text-zinc-400">${u.esc(t.direction)} · ${u.esc(t.channel || t.kind || "")} · ${u.fmtDT(t.occurred_at)}</div><div class="whitespace-pre-wrap">${u.esc(t.body || "")}</div></div>`).join("")}</div>` : ""}
+    </div>`;
+  }
+
+  function logReply(l) {
+    U().openModal({
+      title: "Log their reply", sub: l.company + " · what the client said (inbound)",
+      body: `<div class="grid grid-cols-1 gap-3">${F("Channel", `<select name="r_channel" class="inp">${["whatsapp", "email", "phone", "instagram", "meeting", "other"].map((c) => `<option>${c}</option>`).join("")}</select>`)}${F("What they said", `<textarea name="r_body" class="inp" rows="5"></textarea>`)}</div>`,
+      actions: [{ label: "Cancel", ghost: true, onClick: () => U().closeModal() },
+        { label: "Log reply", primary: true, onClick: async () => {
+          const ch = document.querySelector("#modal-body [name=r_channel]").value, body = document.querySelector("#modal-body [name=r_body]").value.trim();
+          if (!body) return U().toast("Write what they said first");
+          try { await window.DB.gov.logConversation({ lead_id: l.id, channel: ch, direction: "inbound", body }); U().closeModal(); U().toast("Reply logged.", "The lead can now move past Qualified."); render(); }
+          catch (e) { U().toast("Not saved — " + e.message); }
+        } }],
+    });
+  }
+
+  async function convertLead(id) {
     const l = S().get("leads", id); if (!l) return;
+    if (l.stage !== "Won") {
+      try { await window.DB.moveLead(id, "Won"); }
+      catch (e) { U().closeDrawer(); return U().toast("Not converted — " + e.message); }
+    }
+    U().closeDrawer();
+    const cur = S().get("leads", id);
+    if (cur.client_id && S().get("clients", cur.client_id)) { // already a client record (e.g. a Maps lead): it is now Active
+      U().toast("Lead won.", l.company); location.hash = "#/customer/" + cur.client_id; return render();
+    }
     const c = S().insert("clients", { company_name: l.company, contact_person: l.contact_person, email: l.email, phone: l.phone, source: l.source, status: "Active Client", account_manager: l.assigned_to, tags: [], lifetime_value: 0 });
-    S().update("leads", id, { stage: "Won", converted_client_id: c.id });
+    S().update("leads", id, { client_id: c.id, converted_client_id: c.id }, false);
     S().log("converted lead to client", "client", l.company);
     U().toast("Lead converted to client.", l.company);
     location.hash = "#/customer/" + c.id;
@@ -874,21 +1038,26 @@
       return;
     }
     if (a === "push-sb") {
-      if (!window.DB.useRemote()) return U().toast("Isi anon key + Connect dulu.");
+      if (!window.DB.isLive()) return U().toast("Sign in first.");
       return U().openModal({
-        title: "Push local → Supabase", body: `<p class="text-[.84rem] text-zinc-600">Upload seluruh workspace (ID lama di-remap ke UUID, relasi ikut). Lakukan <b>sekali</b> setelah schema.sql di-run.</p>`,
+        title: "Push local → Supabase", body: `<p class="text-[.84rem] text-zinc-600">Upload this browser's workspace once (old ids become UUIDs, links kept). Only needed if you used the app in local mode before.</p>`,
         actions: [{ label: "Cancel", ghost: true, onClick: () => U().closeModal() },
-          { label: "Push now", primary: true, onClick: () => { U().closeModal(); U().toast("Pushing…", "jangan tutup halaman."); window.DB.push().then(() => { U().toast("Synced.", "Local + Supabase sekarang sama."); render(); }).catch((e) => U().toast("Push gagal.", e.message)); } }],
+          { label: "Push now", primary: true, onClick: () => { U().closeModal(); U().toast("Pushing…", "jangan tutup halaman."); window.DB.push().then(() => window.DB.pull()).then(() => { U().toast("Synced.", "Local + Supabase sekarang sama."); render(); }).catch((e) => U().toast("Push gagal.", e.message)); } }],
       });
     }
     if (a === "pull-sb") {
-      if (!window.DB.useRemote()) return U().toast("Isi anon key + Connect dulu.");
-      return U().confirmDestructive("Pull dari Supabase?", "Data lokal ditimpa dengan isi Supabase.", () => {
-        window.DB.pull().then(() => { U().toast("Refreshed from Supabase."); render(); }).catch((e) => U().toast("Pull gagal.", e.message));
-      });
+      if (!window.DB.isLive()) return U().toast("Sign in first.");
+      U().toast("Refreshing…");
+      return window.DB.pull().then(() => { U().toast("Refreshed from Supabase."); render(); }).catch((e) => U().toast("Refresh gagal.", e.message));
     }
-    if (a === "disconnect-sb") { localStorage.removeItem("signal_supabase_url"); localStorage.removeItem("signal_supabase_key"); C().supabase.url = ""; C().supabase.anonKey = ""; U().toast("Disconnected — local mode."); return render(); }
-    if (a === "reset") return U().confirmDestructive("Reset demo data?", "All local changes will be replaced with fresh seed data.", () => { S().reset(); render(); });
+    if (a === "sign-out") {
+      return window.DB.Auth.signOut().then(() => { S().reset(); U().toast("Signed out."); render(); });
+    }
+    if (a === "disconnect-sb") { localStorage.removeItem("signal_supabase_url"); localStorage.removeItem("signal_supabase_key"); U().toast("Reload to apply."); return render(); }
+    if (a === "reset") {
+      if (window.DB.isLive()) return U().confirmDestructive("Clear local cache?", "This browser's copy is cleared and reloaded from Supabase. Nothing in the database is deleted.", () => { S().reset(); window.DB.pull().then(() => { U().toast("Reloaded from Supabase."); render(); }); }, "Clear cache");
+      return U().confirmDestructive("Reset demo data?", "All local changes will be replaced with fresh seed data.", () => { S().reset(); render(); });
+    }
   }
 
   /* ---------- event wiring ---------- */
@@ -948,7 +1117,43 @@
 
     // drag & drop: tasks, leads, content
     bindDrop("[data-drop]", "[data-drag]", (taskId, status) => { S().update("tasks", taskId, { status }); S().log("moved task", "task", S().get("tasks", taskId)?.title + " → " + status); U().toast("Changes saved."); render(); });
-    bindDrop("[data-drop-lead]", "[data-drag-lead]", (id, stage) => { S().update("leads", id, { stage }); S().log("moved lead", "lead", S().get("leads", id)?.company + " → " + stage); U().toast("Changes saved."); render(); });
+    bindDrop("[data-drop-lead]", "[data-drag-lead]", (id, stage) => moveLeadUI(id, stage));
+
+    // governance: approvals + outbox
+    const val = (elId) => (document.getElementById(elId)?.value || "").trim();
+    document.querySelectorAll("[data-decide]").forEach((b) => (b.onclick = async () => {
+      const id = b.dataset.decide, d = b.dataset.decision, note = val("note-" + id), instr = val("instr-" + id);
+      if ((d === "rejected" || d === "revision_requested") && !note) return U().toast("Add a note first", "Say what should change or why it is rejected.");
+      document.querySelectorAll(`[data-decide="${id}"]`).forEach((x) => (x.disabled = true));
+      try {
+        await window.DB.gov.decide(id, d, note, instr);
+        const a = S().get("approvals", id);
+        if (d === "approved" && a && a.payload && a.payload.recipient) { await window.DB.gov.queue(id); U().toast("Approved and queued.", "Send it from the Outbox."); }
+        else U().toast("Decision recorded.");
+      } catch (e) { U().toast("Not saved — " + e.message); }
+      render();
+    }));
+    document.querySelectorAll("[data-queue]").forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      try { await window.DB.gov.queue(b.dataset.queue); U().toast("Queued.", "Ready to send below."); } catch (e) { U().toast("Not queued — " + e.message); }
+      render();
+    }));
+    document.querySelectorAll("[data-mark]").forEach((b) => (b.onclick = async () => {
+      const id = b.dataset.mark, status = b.dataset.status;
+      const go = async (note) => {
+        try { await window.DB.gov.mark(id, status, note); U().toast(status === "sent" ? "Marked sent." : status === "failed" ? "Marked failed." : "Cancelled."); }
+        catch (e) { U().toast("Not saved — " + e.message); }
+        render();
+      };
+      if (status === "failed") return U().openModal({ title: "What went wrong?", body: `<textarea id="fail-note" class="inp" rows="3"></textarea>`,
+        actions: [{ label: "Cancel", ghost: true, onClick: () => U().closeModal() }, { label: "Mark failed", primary: true, onClick: () => { const n = document.getElementById("fail-note").value.trim(); if (!n) return U().toast("Say what went wrong"); U().closeModal(); go(n); } }] });
+      if (status === "cancelled") return U().confirmDestructive("Cancel this message?", "It will not be sent. A new approval is needed to send it later.", () => go(), "Cancel message", "Keep it");
+      go("sent by hand");
+    }));
+    document.querySelectorAll("[data-copy-outbox]").forEach((b) => (b.onclick = async () => {
+      const o = S().get("outbox", b.dataset.copyOutbox); if (!o) return;
+      await navigator.clipboard.writeText(o.subject ? o.subject + "\n\n" + o.body : o.body); U().toast("Copied.", "Send it, then Mark sent.");
+    }));
     bindDrop("[data-drop-content]", "[data-drag-content]", (id, status) => { S().update("content", id, { status }); S().log("moved content", "content", S().get("content", id)?.title + " → " + status); U().toast("Changes saved."); render(); });
   }
 
@@ -980,7 +1185,7 @@
     document.querySelectorAll("[data-notif]").forEach((a) => (a.onclick = () => { S().update("notifications", a.dataset.notif, { is_read: true }, false); U().closeDrawer(); render(); }));
   }
 
-  function boot() {
+  async function boot() {
     document.getElementById("btn-search").onclick = openSearch;
     document.getElementById("btn-quick").onclick = quickCreate;
     document.getElementById("btn-notif").onclick = notifPanel;
@@ -993,10 +1198,19 @@
       if (e.key.toLowerCase() === "c" && !e.metaKey && !e.ctrlKey && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) quickCreate();
       if (e.key === "Escape") { U().closeModal(); U().closeDrawer(); document.getElementById("sidebar")?.classList.remove("open"); }
     });
-    S().subscribe(() => renderNav());
+    S().subscribe(() => { if (!needsLogin()) renderNav(); });
+    // live changes from Supabase (approvals, outbox, notifications, rolled-back edits)
+    window.addEventListener("signal:remote", () => {
+      if (needsLogin()) return;
+      renderNav();
+      if (["#/approvals", "#/outbox", "#/dashboard"].includes(location.hash.split("?")[0]) && !document.getElementById("modal")) render();
+    });
     if (!location.hash) location.hash = "#/dashboard";
-    // greeting name
-    const d = new Date(); const hh = d.getHours();
+    if (window.DB.useRemote()) {
+      document.getElementById("view").innerHTML = `<div class="py-20 text-center text-[.85rem] text-zinc-400">Loading workspace…</div>`;
+      try { await window.DB.Auth.init(); if (window.DB.Auth.signedIn()) await window.DB.start(); }
+      catch (e) { U().toast("Could not reach Supabase", e.message); }
+    }
     render();
   }
 

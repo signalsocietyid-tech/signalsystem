@@ -94,6 +94,18 @@ Relasi beli: `SUPPLIER → PURCHASE_ORDER → (confirm) → BILL → (payBill: m
 - Sinyal attention `sales` muncul untuk SO-2502 (Confirmed belum ber-invoice); penomoran + format IDR OK.
 - Serve Node HTTP: `index.html` 200.
 
+## Live Supabase + Governance (9 Nov 2026)
+
+App sekarang **live ke Supabase** (bukan lagi local mode + Push/Pull manual).
+
+- **Login wajib** (Supabase Auth). Role dari `public.profiles.role`: `admin` = CEO (memutuskan semua approval), `manager` = delegasi (outreach, pesan, meeting, scope change), `member/finance/marketing` = tulis, `viewer` = baca saja. Akun dibuat admin di dashboard Supabase; sign-up publik dimatikan.
+- **Sinkron:** `db.js` mendengarkan event Store (`insert/update/delete`, termasuk `log()` dan `notify()`) lalu menulis ke Supabase. Kalau database menolak (RLS / aturan), perubahan lokal dibatalkan + toast alasannya. Saat login → `pull()` semua tabel. ID baru = UUID (`store.js uid`). Kolom yang dikirim difilter lewat `assets/js/columns.js` (GENERATED — jalankan `cd tests; npm run columns` setiap skema berubah).
+- **Pipeline:** stage lead hanya lewat `DB.moveLead()` → RPC `move_lead`. Maju bebas; mundur / Lost / Nurture wajib alasan; melewati Qualified butuh percakapan nyata (pesan approved yang sudah terkirim, atau balasan masuk yang di-log). Won boleh dari stage terbuka mana pun. Stage baru: Solutioning, Nurture.
+- **Approval → Outbox:** menu Governance → Approvals / Outbox. Tombol Chat WhatsApp di Customers dan "Request message approval" di drawer lead membuat approval berisi teks persis; approval terikat hash SHA-256 isi pesan. Setelah approved → antre di Outbox (sekali kirim) → buka wa.me / mailto → Mark sent → tercatat di `lead_activities`. Admin bisa "Approve & open" sekaligus (tetap tercatat).
+- **Database:** `supabase/migrations/20261107000000_governance.sql` (live 7 Nov) + `20261109000000_app_compat.sql`. Tes: `cd tests; npm install; npm test` (PGlite, membangun DB dari `schema.sql` + migrations).
+- **Bug diperbaiki:** form Edit client mengosongkan Notes (`Ta("notes", "")`) → sekarang memakai notes yang ada. Penting karena 1.408 client hasil impor Google Maps menyimpan `place_id` di notes.
+- Mode offline/demo: `localStorage.signal_supabase_key = "local"`.
+
 ## Next Step (belum dikerjakan)
 
 1. Isi kredensial di Settings → Supabase (atau `localStorage` `signal_supabase_url/key`) lalu ganti adapter lokal di `db.js` ke client Supabase asli.

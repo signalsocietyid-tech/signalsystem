@@ -70,6 +70,19 @@ node --check "assets/js/<file>.js"
 
 Untuk perubahan logika/view, jalankan juga harness render (semua view harus PASS, lihat riwayat sesi) dan uji `insert → update → remove` di Store. Uji serve statis bila menyentuh `index.html`.
 
+Untuk perubahan skema/database: tulis migration baru di `supabase/migrations/` (jangan ubah yang sudah live), lalu:
+
+```powershell
+cd tests; npm test; npm run columns
+```
+
+## 7b. Governance (wajib dipatuhi)
+
+- Stage lead **hanya** lewat `DB.moveLead(id, stage, reason)` — jangan `S().update("leads", id, { stage })` langsung.
+- Pesan keluar (WhatsApp/email/IG) **hanya** lewat `requestMessage()` → Approvals → Outbox. Jangan buka `wa.me` langsung dengan teks yang belum di-approve.
+- Approval, outbox, dan log percakapan ditulis lewat `DB.gov.*` (bukan Store biasa) — database yang menentukan siapa boleh memutuskan dan apa yang boleh dikirim.
+- Jangan pernah menaruh service_role / secret key di repo. Publishable key memang publik (RLS yang menjaga data).
+
 ## 8. Larangan
 
 - Jangan menambah framework/build step/npm tanpa persetujuan.

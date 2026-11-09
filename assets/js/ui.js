@@ -25,6 +25,10 @@ window.UI = (function () {
     "Idea": "#71717A", "Brief": "#2563EB", "Production": "#EA580C", "Internal Review": "#7C3AED", "Client Review": "#D97706", "Approved": "#0EA5A0", "Scheduled": "#2563EB", "Published": "#16A34A",
     "Planned": "#71717A", "Paused": "#D97706",
     "Lead": "#71717A", "Prospect": "#2563EB", "Active Client": "#16A34A", "Past Client": "#A1A1AA", "Inactive": "#D4D4D8",
+    "Solutioning": "#0284C7", "Nurture": "#A1A1AA",
+    // governance: approvals + outbox
+    "Pending": "#FF6600", "Rejected": "#DC2626", "Revision requested": "#D97706", "Deferred": "#A1A1AA",
+    "Ready": "#FF6600", "Failed": "#DC2626",
   };
   const pill = (s) => {
     const c = STATUS_COLORS[s] || "#52525B";
@@ -79,12 +83,12 @@ window.UI = (function () {
   }
   function closeModal() { document.getElementById("modal")?.remove(); }
 
-  function confirmDestructive(title, body, onYes) {
+  function confirmDestructive(title, body, onYes, yesLabel, noLabel) {
     openModal({
       title, body: `<p class="text-[.84rem] text-zinc-600">${esc(body)}</p>`,
       actions: [
-        { label: "Cancel", ghost: true, onClick: closeModal },
-        { label: "Delete", primary: true, id: "m-del", onClick: () => { closeModal(); onYes(); } },
+        { label: noLabel || "Cancel", ghost: true, onClick: closeModal },
+        { label: yesLabel || "Delete", primary: true, id: "m-del", onClick: () => { closeModal(); onYes(); } },
       ],
     });
   }

@@ -14,13 +14,18 @@ window.SignalConfig = {
     graphite: "#1C1C1F",
     paper: "#FAFAF9",
   },
-  // Fill these in when connecting Supabase — the app runs on
-  // local seed + localStorage until then (see services/db.js).
+  // Supabase is the source of truth (sign-in required). The publishable key is
+  // public by design — row level security decides what each signed-in role may do.
+  // Never put the service_role / secret key in this file.
+  // localStorage signal_supabase_key = "local" → offline demo mode (no sign-in, data in this browser only).
   supabase: {
     url: localStorage.getItem("signal_supabase_url") || "https://awxxvxlbebwlzgkepdsb.supabase.co",
-    anonKey: localStorage.getItem("signal_supabase_key") || "",
+    anonKey: localStorage.getItem("signal_supabase_key") === "local" ? "" : (localStorage.getItem("signal_supabase_key") || "sb_publishable_IyL3isPDXBANHehMlkTTNg_7JvJW0vN"),
   },
-  pipelineStages: ["New Lead","Qualified","Contacted","Discovery","Proposal","Negotiation","Won","Lost"],
+  // order matters: the database lets leads move forward freely; moving back,
+  // Lost and Nurture need a reason; past Qualified needs a real conversation
+  pipelineStages: ["New Lead","Qualified","Contacted","Discovery","Solutioning","Proposal","Negotiation","Won","Lost","Nurture"],
+  approvalChannels: [["whatsapp", "WhatsApp (sent by hand via wa.me)"], ["email", "Email"], ["instagram", "Instagram DM (reply only)"]],
   taskStatuses: ["To Do","In Progress","Review","Blocked","Done"],
   taskPriorities: ["Low","Medium","High","Urgent"],
   projectStatuses: ["Planning","Active","On Hold","Completed","Archived"],

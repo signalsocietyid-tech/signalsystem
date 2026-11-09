@@ -838,27 +838,128 @@ window.Views = (function () {
   }
 
   function settings() {
-    const u = U();
-    const cfg = window.SignalConfig.supabase;
-    return head("Settings", "Workspace, Supabase connection, roles and danger zone.", "") + `
+    const u = U(), DB = window.DB, me = C().currentUser;
+    const live = DB.isLive();
+    return head("Settings", "Your account, sync with Supabase, roles and danger zone.", "") + `
     <div class="grid lg:grid-cols-2 gap-4">
-      <div class="card p-5"><div class="font-bold text-[.85rem] mb-3">Workspace</div>
-        <label class="lbl">Company</label><input class="inp mb-3" value="Signal Society"/>
-        <label class="lbl">Workspace</label><input class="inp mb-3" value="Signal System · Production"/>
-        <button class="btn-p" data-action="save-settings">Save Changes</button> <span class="text-[.72rem] text-zinc-400 ml-2" id="save-hint"></span></div>
-      <div class="card p-5"><div class="font-bold text-[.85rem] mb-1">Supabase connection</div>
-        <p class="text-[.76rem] text-zinc-500 mb-3">Project <b class="font-num">awxxvxlbebwlzgkepdsb</b> terisi otomatis. Tempel <b>anon key</b> (Project Settings → API), Connect, jalankan <b>schema.sql</b> di SQL Editor, lalu <b>Push</b> data lokal sekali.</p>
-        <label class="lbl">Supabase URL</label><input id="sb-url" class="inp mb-3 font-num" placeholder="https://xyz.supabase.co" value="${u.esc(cfg.url)}"/>
-        <label class="lbl">Anon key</label><input id="sb-key" class="inp mb-3 font-num" placeholder="eyJ…" value="${u.esc(cfg.anonKey)}"/>
-        <div class="flex flex-wrap gap-2"><button class="btn-a" data-action="connect-sb">Connect</button><button class="btn-g" data-action="test-sb">Test</button><button class="btn-g" data-action="disconnect-sb">Disconnect</button></div>
-        <div class="flex flex-wrap gap-2 mt-2"><button class="btn-p" data-action="push-sb">↑ Push local → Supabase</button><button class="btn-g" data-action="pull-sb">↓ Pull</button></div>
-        <div class="text-[.72rem] mt-3 font-semibold" id="sb-status">${window.DB.useRemote() ? (window.DB.migrated() ? `<span class="text-green-600">● Live — synced with Supabase</span>` : `<span style="color:#D97706">● Connected — schema + Push needed</span>`) : (cfg.url ? `<span class="text-zinc-400">○ URL set, key missing</span>` : `<span class="text-zinc-400">○ Local mode — schema ready in /supabase/schema.sql</span>`)}</div></div>
+      <div class="card p-5"><div class="font-bold text-[.85rem] mb-3">Your account</div>
+        ${live ? `<div class="flex items-center gap-3 mb-4">${u.avatar(me.name, 40)}<div><div class="font-bold text-[.9rem]">${u.esc(me.name)}</div><div class="text-[.76rem] text-zinc-500">${u.esc(me.email || "")} · ${u.esc(me.role)}</div></div></div>
+          <button class="btn-g" data-action="sign-out">Sign out</button>`
+        : `<p class="text-[.8rem] text-zinc-500">Local mode — no account. Data stays in this browser only.</p>`}</div>
+      <div class="card p-5"><div class="font-bold text-[.85rem] mb-1">Sync</div>
+        <div class="text-[.76rem] font-semibold mb-3">${live ? `<span class="text-green-600">● Live — every change is saved to Supabase</span>` : `<span class="text-zinc-400">○ Local mode</span>`}</div>
+        <p class="text-[.76rem] text-zinc-500 mb-3">Project <b class="font-num">${u.esc(C().supabase.url.replace(/^https:\/\//, ""))}</b>. The database checks every change: who may edit, who may decide approvals, and what may be sent.</p>
+        <div class="flex flex-wrap gap-2"><button class="btn-g" data-action="pull-sb">↻ Refresh from Supabase</button>${DB.migrated() ? "" : `<button class="btn-p" data-action="push-sb">↑ Push local data (once)</button>`}</div></div>
       <div class="card p-5"><div class="font-bold text-[.85rem] mb-3">Roles & permissions</div>
-        ${["Admin", "Manager", "Member", "Finance", "Marketing", "Viewer"].map((r) => `<div class="flex items-center gap-2 py-1.5 border-b border-[#F4F4F2] last:border-0 text-[.8rem]"><span class="font-semibold w-24">${r}</span><span class="text-zinc-500">${r === "Admin" ? "Full access" : r === "Viewer" ? "Read only" : "View · Create · Edit"}</span></div>`).join("")}</div>
+        ${[["Admin", "CEO — full access, decides every approval"], ["Manager", "Create · Edit · decides outreach, messages, meetings, scope changes"], ["Member", "Create · Edit · requests approvals"], ["Finance", "Create · Edit"], ["Marketing", "Create · Edit"], ["Viewer", "Read only"]].map((r) => `<div class="flex items-center gap-2 py-1.5 border-b border-[#F4F4F2] last:border-0 text-[.8rem]"><span class="font-semibold w-24">${r[0]}</span><span class="text-zinc-500">${r[1]}</span></div>`).join("")}
+        <p class="text-[.72rem] text-zinc-400 mt-3">Roles are set per person in Supabase (table <span class="font-num">profiles</span>). Only an admin can change them.</p></div>
       <div class="card p-5 border-red-200"><div class="font-bold text-[.85rem] mb-1 text-red-600">Danger zone</div>
-        <p class="text-[.76rem] text-zinc-500 mb-3">Reset the workspace to fresh seed data.</p>
-        <button class="btn-g !border-red-200 !text-red-600" data-action="reset">Reset demo data</button></div>
+        <p class="text-[.76rem] text-zinc-500 mb-3">${live ? "Clear this browser's copy and reload everything from Supabase. Nothing in the database is deleted." : "Reset the workspace to fresh seed data."}</p>
+        <button class="btn-g !border-red-200 !text-red-600" data-action="reset">${live ? "Clear local cache" : "Reset demo data"}</button></div>
     </div>`;
+  }
+
+  /* ---------- governance: approvals + outbox ---------- */
+  const APPROVAL_LABEL = { pending: "Pending", approved: "Approved", rejected: "Rejected", revision_requested: "Revision requested", deferred: "Deferred" };
+  const OUTBOX_LABEL = { ready: "Ready", sent: "Sent", failed: "Failed", cancelled: "Cancelled" };
+  const subjectOf = (x) => (S().get("leads", x.lead_id) || {}).company || (x.client_id ? S().clientName(x.client_id) : "—");
+  const policyOf = (cat) => S().list("policies").find((p) => p.category === cat) || { name: cat, risk: "" };
+  const notLive = () => U().empty("Approvals live in Supabase", "Sign in (Settings) to request, decide and send.", "");
+
+  function messagePreview(p) {
+    const u = U();
+    if (!p || !p.recipient) return `<div class="text-[.8rem] text-zinc-600 whitespace-pre-wrap rounded-lg p-3 bg-[#FAFAF9] border border-[#F0F0EE]">${u.esc((p && p.details) || JSON.stringify(p || {}))}</div>`;
+    return `<div class="text-[.76rem] text-zinc-500 mb-1"><b class="text-zinc-800">${u.esc(p.channel)}</b> → <span class="font-num">${u.esc(p.recipient)}</span>${p.subject ? ` · ${u.esc(p.subject)}` : ""}</div>
+      <div class="text-[.82rem] whitespace-pre-wrap rounded-lg p-3 bg-[#FAFAF9] border border-[#F0F0EE]">${u.esc(p.body)}</div>`;
+  }
+
+  function approvals() {
+    const s = S(), u = U(), DB = window.DB;
+    if (!DB.isLive()) return head("Approvals", "Every message and decision that leaves Signal Society needs a recorded yes.", "") + notLive();
+    const all = s.list("approvals");
+    const open = all.filter((a) => ["pending", "deferred"].includes(a.status)).sort((a, b) => String(a.due_at).localeCompare(String(b.due_at)));
+    const late = open.filter((a) => a.due_at && new Date(a.due_at) < new Date());
+    const decided = all.filter((a) => !["pending", "deferred"].includes(a.status)).slice(0, 25);
+    return head("Approvals", "An approval covers exactly the text shown — if anything changes, it needs a new approval.", "") + `
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        ${kpi("Waiting", open.length, "pending or deferred")}
+        ${kpi("Past SLA", late.length, late.length ? "decide these first" : "all on time", null, !!late.length)}
+        ${kpi("Ready to send", s.list("outbox").filter((o) => o.status === "ready").length, "in the outbox")}
+        ${kpi("Decided", decided.length, "most recent 25")}
+      </div>
+      ${secTitle("WAITING FOR A DECISION")}
+      ${open.length ? `<div class="grid gap-3 mb-6">${open.map((a) => {
+        const pol = policyOf(a.category), overdue = a.due_at && new Date(a.due_at) < new Date();
+        const can = DB.Auth.canDecide(a.category);
+        return `<div class="card p-5 fade-up" id="ap-${a.id}" style="${overdue ? "border-color:#FCA5A5" : ""}">
+          <div class="flex flex-wrap items-start justify-between gap-2 mb-3">
+            <div><div class="kpi-label">${u.esc(pol.name)} · ${u.esc(pol.risk)} risk</div>
+              <div class="font-bold text-[.95rem] mt-0.5">${u.esc(a.title)}</div>
+              <div class="text-[.76rem] text-zinc-500">${u.esc(subjectOf(a))} · requested ${u.rel(a.requested_at)}</div></div>
+            <div class="flex items-center gap-2">${u.pill(APPROVAL_LABEL[a.status])}<span class="text-[.72rem] font-semibold" style="color:${overdue ? "#DC2626" : "#71717A"}">${overdue ? "past SLA" : "due " + u.rel(a.due_at)}</span></div>
+          </div>
+          <div class="grid lg:grid-cols-2 gap-4">
+            <div>${messagePreview(a.payload)}
+              ${a.context ? `<div class="text-[.76rem] text-zinc-500 mt-2"><b>Context:</b> ${u.esc(a.context)}</div>` : ""}
+              ${a.evidence ? `<div class="text-[.76rem] text-zinc-500 mt-1"><b>Evidence:</b> ${u.esc(a.evidence)}</div>` : ""}
+              ${a.risks ? `<div class="text-[.76rem] text-zinc-500 mt-1"><b>Risks:</b> ${u.esc(a.risks)}</div>` : ""}
+              <div class="text-[.66rem] text-zinc-400 mt-2 font-num" title="SHA-256 of the exact approved content">#${u.esc(String(a.payload_hash || "").slice(0, 16))}</div></div>
+            <div>${can ? `<label class="lbl">Note <span class="text-zinc-400 font-normal">(required to reject or request revision)</span></label>
+              <textarea class="inp mb-2" rows="3" id="note-${a.id}"></textarea>
+              <label class="lbl">Instructions for whoever sends it</label><input class="inp mb-3" id="instr-${a.id}"/>
+              <div class="flex flex-wrap gap-2">
+                <button class="btn-a" data-decide="${a.id}" data-decision="approved">Approve</button>
+                <button class="btn-g" data-decide="${a.id}" data-decision="revision_requested">Request revision</button>
+                <button class="btn-g" data-decide="${a.id}" data-decision="deferred">Defer</button>
+                <button class="btn-g !text-red-600 !border-red-200" data-decide="${a.id}" data-decision="rejected">Reject</button></div>`
+              : `<div class="text-[.8rem] text-zinc-500 rounded-lg p-3 bg-[#FAFAF9]">Only the CEO${pol.delegate_role ? " or a manager" : ""} can decide this.</div>`}</div>
+          </div></div>`;
+      }).join("")}</div>` : `<div class="mb-6">${u.empty("Nothing waiting.", "New requests appear here — from Customers (Chat) or a lead's drawer.", "")}</div>`}
+      ${secTitle("RECENTLY DECIDED")}
+      ${decided.length ? `<div class="card overflow-x-auto"><table class="tbl"><thead><tr><th>Request</th><th>For</th><th>Type</th><th>Decision</th><th>When</th><th>Note</th></tr></thead><tbody>
+        ${decided.map((a) => `<tr><td class="font-semibold">${u.esc(a.title)}</td><td>${u.esc(subjectOf(a))}</td><td>${u.esc(policyOf(a.category).name)}</td><td>${u.pill(APPROVAL_LABEL[a.status])}</td><td class="font-num">${u.fmtDT(a.decided_at)}</td><td class="text-zinc-500">${u.esc(a.decision_note || "")}</td></tr>`).join("")}
+      </tbody></table></div>` : u.empty("No decisions yet.", "", "")}`;
+  }
+
+  function outbox() {
+    const s = S(), u = U(), DB = window.DB;
+    if (!DB.isLive()) return head("Outbox", "Approved messages wait here until they are sent.", "") + notLive();
+    const items = s.list("outbox");
+    const ready = items.filter((o) => o.status === "ready");
+    const approvedNotQueued = s.list("approvals").filter((a) => a.status === "approved" && a.payload && a.payload.recipient && !items.some((o) => o.approval_id === a.id));
+    const done = items.filter((o) => o.status !== "ready").slice(0, 30);
+    const waLink = (o) => "https://wa.me/" + String(o.recipient).replace(/\D/g, "") + "?text=" + encodeURIComponent(o.body);
+    const mailLink = (o) => "mailto:" + encodeURIComponent(o.recipient) + "?subject=" + encodeURIComponent(o.subject || "") + "&body=" + encodeURIComponent(o.body);
+    return head("Outbox", "The only way out: each approved message is sent once, word for word, then marked sent.", "") + `
+      ${approvedNotQueued.length ? `${secTitle("APPROVED — NOT QUEUED YET")}<div class="grid gap-3 mb-6">${approvedNotQueued.map((a) => `<div class="card p-4 flex flex-wrap items-center justify-between gap-3"><div><div class="font-bold text-[.88rem]">${u.esc(a.title)}</div><div class="text-[.76rem] text-zinc-500">${u.esc(subjectOf(a))} · ${u.esc(a.payload.channel)} → ${u.esc(a.payload.recipient)}</div></div><button class="btn-a" data-queue="${a.id}">Queue to send</button></div>`).join("")}</div>` : ""}
+      ${secTitle("READY TO SEND")}
+      ${ready.length ? `<div class="grid gap-3 mb-6">${ready.map((o) => `<div class="card p-5">
+          <div class="flex flex-wrap items-start justify-between gap-2 mb-3"><div><div class="font-bold text-[.92rem]">${u.esc(subjectOf(o))}</div><div class="text-[.76rem] text-zinc-500">queued ${u.rel(o.created_at)}</div></div>${u.pill("Ready")}</div>
+          ${messagePreview(o)}
+          <div class="flex flex-wrap gap-2 mt-3">
+            ${o.channel === "whatsapp" ? `<a class="btn-a" href="${waLink(o)}" target="_blank" rel="noopener" data-opened="${o.id}">Open WhatsApp ↗</a>` : o.channel === "email" ? `<a class="btn-a" href="${mailLink(o)}" data-opened="${o.id}">Open email ↗</a>` : `<button class="btn-a" data-copy-outbox="${o.id}">Copy message</button>`}
+            <button class="btn-p" data-mark="${o.id}" data-status="sent">Mark sent</button>
+            <button class="btn-g" data-mark="${o.id}" data-status="failed">Failed</button>
+            <button class="btn-g !text-red-600 !border-red-200" data-mark="${o.id}" data-status="cancelled">Cancel</button></div></div>`).join("")}</div>`
+        : `<div class="mb-6">${u.empty("Nothing to send.", "Approved messages land here.", "")}</div>`}
+      ${secTitle("HISTORY")}
+      ${done.length ? `<div class="card overflow-x-auto"><table class="tbl"><thead><tr><th>To</th><th>For</th><th>Channel</th><th>Status</th><th>When</th><th>Note</th></tr></thead><tbody>
+        ${done.map((o) => `<tr><td class="font-num">${u.esc(o.recipient)}</td><td>${u.esc(subjectOf(o))}</td><td>${u.esc(o.channel)}</td><td>${u.pill(OUTBOX_LABEL[o.status])}</td><td class="font-num">${u.fmtDT(o.sent_at || o.created_at)}</td><td class="text-zinc-500">${u.esc(o.failure || o.provider_ref || "")}</td></tr>`).join("")}
+      </tbody></table></div>` : u.empty("Nothing sent yet.", "", "")}`;
+  }
+
+  function login(error) {
+    const u = U();
+    return `<div class="min-h-screen flex items-center justify-center px-4" style="background:#FAFAF9">
+      <form id="login-form" class="card p-7 w-full max-w-[380px] fade-up" autocomplete="on">
+        <div class="flex items-center gap-2 mb-6"><img src="logosignalsociety/logosignalsociety.png" alt="" class="w-8 h-8 rounded-lg"/><div><div class="font-extrabold tracking-tight">Signal System</div><div class="text-[.7rem] text-zinc-400">SIGNAL SOCIETY</div></div></div>
+        <h1 class="text-[1.2rem] font-extrabold tracking-tight mb-1">Sign in</h1>
+        <p class="text-[.78rem] text-zinc-500 mb-5">Accounts are created by an admin — there is no public sign-up.</p>
+        <label class="lbl" for="login-email">Email</label><input id="login-email" name="email" type="email" class="inp mb-3" autocomplete="email" required/>
+        <label class="lbl" for="login-password">Password</label><input id="login-password" name="password" type="password" class="inp mb-4" autocomplete="current-password" required/>
+        ${error ? `<div class="text-[.78rem] rounded-lg p-2.5 mb-3" role="alert" style="background:#FEF2F2;color:#B91C1C">${u.esc(error)}</div>` : ""}
+        <button class="btn-a w-full" id="login-submit">Sign in</button>
+      </form></div>`;
   }
 
   return {
@@ -869,6 +970,7 @@ window.Views = (function () {
     suppliers, purchaseOrders, bills,
     invoicePrint, soPrint, poPrint, billPrint,
     services, templates, analytics, reports, files, activity, settings,
+    approvals, outbox, login, messagePreview, APPROVAL_LABEL, OUTBOX_LABEL,
     taskBoard,
   };
 })();

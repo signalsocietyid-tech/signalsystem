@@ -7,7 +7,8 @@ window.SignalStore = (function () {
   const LS_KEY = "signal_system_v2"; // v2: demo data removed, fresh empty workspace
   let state = null;
   const listeners = new Set();
-  const uid = (p) => p + "_" + Math.random().toString(36).slice(2, 9);
+  // UUIDs so a row keeps the same id locally and in Supabase
+  const uid = (p) => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : p + "_" + Math.random().toString(36).slice(2, 9);
   const today = () => new Date().toISOString().slice(0, 10);
 
   function load() {
@@ -17,7 +18,7 @@ window.SignalStore = (function () {
         state = JSON.parse(raw);
         // migrate: backfill collections added in later versions
         const s = window.SignalSeed;
-        ["salesOrders", "accounts", "suppliers", "purchaseOrders", "bills"].forEach((k) => { if (!Array.isArray(state[k])) state[k] = s[k] || []; });
+        ["salesOrders", "accounts", "suppliers", "purchaseOrders", "bills", ...GOV].forEach((k) => { if (!Array.isArray(state[k])) state[k] = s[k] || []; });
         persist(); return;
       }
     } catch (e) {}
@@ -34,23 +35,30 @@ window.SignalStore = (function () {
       activities: s.activities, notifications: s.notifications,
       notes: s.notes, plans: s.plans,
     };
+    GOV.forEach((k) => (state[k] = []));
     persist();
   }
+  // governance collections: filled from Supabase (approvals, outbox, conversation log, approval policies)
+  const GOV = ["approvals", "outbox", "leadActivities", "policies"];
   function persist() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
   function emit(evt) { listeners.forEach((fn) => { try { fn(evt); } catch (e) {} }); persist(); }
 
   function log(action, kind, label, actor) {
-    state.activities.unshift({
+    const row = {
       id: uid("a"), actor_name: actor || window.SignalConfig.currentUser.name,
       action, entity_kind: kind || "", entity_label: label || "",
       created_at: new Date().toISOString(),
-    });
+    };
+    state.activities.unshift(row);
+    emit({ type: "activities:insert", row }); // mirrored to Supabase when signed in
   }
   function notify(title, body, kind, link) {
-    state.notifications.unshift({
+    const row = {
       id: uid("n"), title, body: body || "", kind: kind || "info",
       link: link || "#/dashboard", is_read: false, created_at: new Date().toISOString(),
-    });
+    };
+    state.notifications.unshift(row);
+    emit({ type: "notifications:insert", row });
   }
 
   // ---- generic CRUD ----
@@ -70,11 +78,11 @@ window.SignalStore = (function () {
     emit({ type: coll + ":update", row });
     return row;
   }
-  function remove(coll, id, label) {
+  function remove(coll, id, label, meta) {
     const i = list(coll).findIndex((x) => x.id === id);
     if (i < 0) return false;
     const [row] = list(coll).splice(i, 1);
-    log("deleted " + coll.slice(0, -1), coll, label || row.name || row.title || row.id);
+    if (meta !== false) log("deleted " + coll.slice(0, -1), coll, label || row.name || row.title || row.id);
     emit({ type: coll + ":delete", row });
     return true;
   }
@@ -119,6 +127,10 @@ window.SignalStore = (function () {
   }
   function attention() {
     const out = [];
+    const waiting = list("approvals").filter((a) => ["pending", "deferred"].includes(a.status));
+    if (waiting.length) out.push({ kind: "approvals", label: waiting.length + " approval(s) waiting for a decision", link: "#/approvals", items: waiting.slice(0, 4) });
+    const ready = list("outbox").filter((o) => o.status === "ready");
+    if (ready.length) out.push({ kind: "outbox", label: ready.length + " approved message(s) ready to send", link: "#/outbox", items: ready.slice(0, 4) });
     const overdueTasks = list("tasks").filter((t) => t.status !== "Done" && isOverdue(t.due_date));
     if (overdueTasks.length) out.push({ kind: "tasks", label: overdueTasks.length + " task(s) overdue", link: "#/tasks", items: overdueTasks.slice(0, 4) });
     const dueSoon = list("tasks").filter((t) => t.status !== "Done" && !isOverdue(t.due_date) && t.due_date && t.due_date <= addDays(3));
